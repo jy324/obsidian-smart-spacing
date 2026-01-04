@@ -86,7 +86,7 @@ export default class SmartSpacingPlugin extends Plugin {
 			editor.setValue(newContent);
 			editor.setCursor(cursor);
 			if (showNotice) {
-				new Notice('✅ Bold/italic spacing fixed!');
+				new Notice('Bold/italic spacing fixed');
 			}
 		} else if (showNotice) {
 			new Notice('No changes needed.');
@@ -496,7 +496,7 @@ class SmartSpacingSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('英文与加粗之间添加空格')
-			.setDesc('word**bold** → word **bold**（通常不需要）')
+			.setDesc('Word**bold** → word **bold**（通常不需要）')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.spaceBetweenEnglishAndBold)
 				.onChange(async (value) => {
@@ -555,7 +555,7 @@ class SmartSpacingSettingTab extends PluginSettingTab {
 		const li2 = ol.createEl('li');
 		li2.appendText('添加命令：');
 		const code = li2.createEl('code');
-		code.textContent = 'Smart spacing for chinese: fix all spacing';
+		code.textContent = 'Smart spacing for Chinese: fix all spacing';
 		const li3 = ol.createEl('li');
 		li3.textContent = 'linter 会在格式化时自动调用本插件';
 		
@@ -572,7 +572,7 @@ class SmartSpacingSettingTab extends PluginSettingTab {
 		const li5 = ul.createEl('li');
 		li5.appendText('✅ ');
 		const strong3 = li5.createEl('strong');
-		strong3.textContent = 'linter 负责';
+		strong3.textContent = 'Linter 负责';
 		li5.appendText('：中英文空格、中数字空格、其他格式化');
 	}
 }
