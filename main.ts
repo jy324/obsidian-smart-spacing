@@ -33,7 +33,7 @@ export default class SmartSpacingPlugin extends Plugin {
 		// Command: Fix all spacing (designed for Linter custom command)
 		this.addCommand({
 			id: 'fix-all-spacing',
-			name: 'Fix All Spacing (Chinese/Bold/Italic)',
+			name: 'Fix all spacing (Chinese/Bold/Italic)',
 			editorCallback: (editor: Editor, view: MarkdownView) => {
 				this.formatEditor(editor, true);
 			}
@@ -42,7 +42,7 @@ export default class SmartSpacingPlugin extends Plugin {
 		// Command: Fix only bold spacing
 		this.addCommand({
 			id: 'fix-bold-spacing',
-			name: 'Fix Bold Spacing Only',
+			name: 'Fix bold spacing only',
 			editorCallback: (editor: Editor, view: MarkdownView) => {
 				this.formatEditor(editor, true);
 			}
@@ -51,7 +51,7 @@ export default class SmartSpacingPlugin extends Plugin {
 		// Command: Silent fix (no notice, for automation)
 		this.addCommand({
 			id: 'fix-all-spacing-silent',
-			name: 'Fix All Spacing (Silent)',
+			name: 'Fix all spacing (silent)',
 			editorCallback: (editor: Editor, view: MarkdownView) => {
 				this.formatEditor(editor, false);
 			}
@@ -60,11 +60,11 @@ export default class SmartSpacingPlugin extends Plugin {
 		// Add settings tab
 		this.addSettingTab(new SmartSpacingSettingTab(this.app, this));
 
-		console.log('Smart Spacing Plugin loaded (Linter companion mode)');
+		console.debug('Smart Spacing Plugin loaded (Linter companion mode)');
 	}
 
 	onunload() {
-		console.log('Smart Spacing Plugin unloaded');
+		console.debug('Smart Spacing Plugin unloaded');
 	}
 
 	async loadSettings() {
@@ -86,7 +86,7 @@ export default class SmartSpacingPlugin extends Plugin {
 			editor.setValue(newContent);
 			editor.setCursor(cursor);
 			if (showNotice) {
-				new Notice('✅ Bold/Italic spacing fixed!');
+				new Notice('✅ Bold/italic spacing fixed!');
 			}
 		} else if (showNotice) {
 			new Notice('No changes needed.');
@@ -461,14 +461,18 @@ class SmartSpacingSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
-		containerEl.createEl('h2', { text: 'Smart Spacing Settings' });
+		new Setting(containerEl)
+			.setName('Smart spacing settings')
+			.setHeading();
 		
 		containerEl.createEl('p', { 
 			text: '💡 此插件专注于处理加粗/斜体的空格问题，建议配合 Linter 插件使用。',
 			cls: 'setting-item-description'
 		});
 
-		containerEl.createEl('h3', { text: '核心功能' });
+		new Setting(containerEl)
+			.setName('核心功能')
+			.setHeading();
 
 		new Setting(containerEl)
 			.setName('🧹 清理加粗/斜体内部空格')
@@ -510,7 +514,9 @@ class SmartSpacingSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 
-		containerEl.createEl('h3', { text: '保护规则' });
+		new Setting(containerEl)
+			.setName('保护规则')
+			.setHeading();
 
 		new Setting(containerEl)
 			.setName('跳过代码块')
@@ -533,21 +539,40 @@ class SmartSpacingSettingTab extends PluginSettingTab {
 				}));
 
 		// Linter integration guide
-		containerEl.createEl('h3', { text: '📋 配合 Linter 使用' });
+		new Setting(containerEl)
+			.setName('📋 配合 Linter 使用')
+			.setHeading();
 		
 		const guideEl = containerEl.createEl('div', { cls: 'setting-item-description' });
-		guideEl.innerHTML = `
-			<p>在 Linter 设置中添加 Custom Command：</p>
-			<ol>
-				<li>打开 Linter 设置 → Custom Commands</li>
-				<li>添加命令：<code>Smart Spacing for Chinese: Fix All Spacing (Chinese/Bold/Italic)</code></li>
-				<li>Linter 会在格式化时自动调用本插件</li>
-			</ol>
-			<p><strong>分工说明：</strong></p>
-			<ul>
-				<li>✅ <strong>本插件负责</strong>：加粗/斜体的空格处理（状态机算法，不会出错）</li>
-				<li>✅ <strong>Linter 负责</strong>：中英文空格、中数字空格、其他格式化</li>
-			</ul>
-		`;
+		
+		// Create paragraphs and lists using DOM API
+		const p1 = guideEl.createEl('p');
+		p1.textContent = '在 Linter 设置中添加 Custom Command：';
+		
+		const ol = guideEl.createEl('ol');
+		const li1 = ol.createEl('li');
+		li1.textContent = '打开 Linter 设置 → Custom Commands';
+		const li2 = ol.createEl('li');
+		li2.appendText('添加命令：');
+		const code = li2.createEl('code');
+		code.textContent = 'Smart Spacing for Chinese: Fix all spacing (Chinese/Bold/Italic)';
+		const li3 = ol.createEl('li');
+		li3.textContent = 'Linter 会在格式化时自动调用本插件';
+		
+		const p2 = guideEl.createEl('p');
+		const strong1 = p2.createEl('strong');
+		strong1.textContent = '分工说明：';
+		
+		const ul = guideEl.createEl('ul');
+		const li4 = ul.createEl('li');
+		li4.appendText('✅ ');
+		const strong2 = li4.createEl('strong');
+		strong2.textContent = '本插件负责';
+		li4.appendText('：加粗/斜体的空格处理（状态机算法，不会出错）');
+		const li5 = ul.createEl('li');
+		li5.appendText('✅ ');
+		const strong3 = li5.createEl('strong');
+		strong3.textContent = 'Linter 负责';
+		li5.appendText('：中英文空格、中数字空格、其他格式化');
 	}
 }

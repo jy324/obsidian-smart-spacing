@@ -36,7 +36,7 @@ This plugin uses a **state machine algorithm** to handle all bold/italic scenari
 3. Find **Custom Commands** option
 4. Add command:
    ```
-   Smart Spacing for Chinese: Fix All Spacing (Chinese/Bold/Italic)
+   Smart Spacing for Chinese: Fix all spacing (Chinese/Bold/Italic)
    ```
 5. Now Linter will automatically call this plugin during formatting
 
@@ -48,9 +48,9 @@ Disable any bold-related regex rules in Linter (if any) and let this plugin hand
 
 | Command | Description |
 |---------|-------------|
-| `Fix All Spacing (Chinese/Bold/Italic)` | Fix all bold/italic spacing issues |
-| `Fix Bold Spacing Only` | Fix only bold-related issues |
-| `Fix All Spacing (Silent)` | Silent fix without notifications (for automation) |
+| `Fix all spacing (Chinese/Bold/Italic)` | Fix all bold/italic spacing issues |
+| `Fix bold spacing only` | Fix only bold-related issues |
+| `Fix all spacing (silent)` | Silent fix without notifications (for automation) |
 
 ## Settings
 

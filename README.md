@@ -36,7 +36,7 @@ Linter 插件使用正则表达式处理空格，但正则无法正确区分 `**
 3. 找到 **Custom Commands** 选项
 4. 添加命令：
    ```
-   Smart Spacing for Chinese: Fix All Spacing (Chinese/Bold/Italic)
+   Smart Spacing for Chinese: Fix all spacing (Chinese/Bold/Italic)
    ```
 5. 现在每次 Linter 格式化时，会自动调用本插件
 
@@ -48,9 +48,9 @@ Linter 插件使用正则表达式处理空格，但正则无法正确区分 `**
 
 | 命令 | 说明 |
 |------|------|
-| `Fix All Spacing (Chinese/Bold/Italic)` | 修复所有加粗/斜体空格问题 |
-| `Fix Bold Spacing Only` | 只修复加粗相关问题 |
-| `Fix All Spacing (Silent)` | 静默修复，不显示通知（适合自动化） |
+| `Fix all spacing (Chinese/Bold/Italic)` | 修复所有加粗/斜体空格问题 |
+| `Fix bold spacing only` | 只修复加粗相关问题 |
+| `Fix all spacing (silent)` | 静默修复，不显示通知（适合自动化） |
 
 ## 设置选项
 
