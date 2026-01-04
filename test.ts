@@ -140,9 +140,9 @@ const testCases = [
 // Run Tests
 // ============================================================================
 
-console.log('='.repeat(60));
-console.log('Smart Spacing Plugin - Unit Tests');
-console.log('='.repeat(60));
+console.debug('='.repeat(60));
+console.debug('Smart Spacing Plugin - Unit Tests');
+console.debug('='.repeat(60));
 
 let passed = 0;
 let failed = 0;
@@ -153,16 +153,16 @@ for (const tc of testCases) {
     
     if (success) {
         passed++;
-        console.log(`✅ PASS: ${tc.desc}`);
+        console.debug(`✅ PASS: ${tc.desc}`);
     } else {
         failed++;
-        console.log(`❌ FAIL: ${tc.desc}`);
-        console.log(`   Input:    "${tc.input}"`);
-        console.log(`   Expected: "${tc.expected}"`);
-        console.log(`   Got:      "${result}"`);
+        console.debug(`❌ FAIL: ${tc.desc}`);
+        console.debug(`   Input:    "${tc.input}"`);
+        console.debug(`   Expected: "${tc.expected}"`);
+        console.debug(`   Got:      "${result}"`);
     }
 }
 
-console.log('='.repeat(60));
-console.log(`Results: ${passed} passed, ${failed} failed`);
-console.log('='.repeat(60));
+console.debug('='.repeat(60));
+console.debug(`Results: ${passed} passed, ${failed} failed`);
+console.debug('='.repeat(60));
