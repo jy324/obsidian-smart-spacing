@@ -33,7 +33,7 @@ export default class SmartSpacingPlugin extends Plugin {
 		// Command: Fix all spacing (designed for Linter custom command)
 		this.addCommand({
 			id: 'fix-all-spacing',
-			name: 'Fix all spacing (Chinese/Bold/Italic)',
+			name: 'Fix all spacing (Chinese/bold/italic)',
 			editorCallback: (editor: Editor, view: MarkdownView) => {
 				this.formatEditor(editor, true);
 			}
@@ -462,11 +462,11 @@ class SmartSpacingSettingTab extends PluginSettingTab {
 		containerEl.empty();
 
 		new Setting(containerEl)
-			.setName('Smart spacing settings')
+			.setName('Smart spacing')
 			.setHeading();
 		
 		containerEl.createEl('p', { 
-			text: '💡 此插件专注于处理加粗/斜体的空格问题，建议配合 Linter 插件使用。',
+			text: '💡 此插件专注于处理加粗/斜体的空格问题，建议配合 linter 插件使用。',
 			cls: 'setting-item-description'
 		});
 
@@ -496,7 +496,7 @@ class SmartSpacingSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('英文与加粗之间添加空格')
-			.setDesc('Word**bold** → Word **bold**（通常不需要）')
+			.setDesc('word**bold** → word **bold**（通常不需要）')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.spaceBetweenEnglishAndBold)
 				.onChange(async (value) => {
@@ -540,24 +540,24 @@ class SmartSpacingSettingTab extends PluginSettingTab {
 
 		// Linter integration guide
 		new Setting(containerEl)
-			.setName('📋 配合 Linter 使用')
+			.setName('📋 配合 linter 使用')
 			.setHeading();
 		
 		const guideEl = containerEl.createEl('div', { cls: 'setting-item-description' });
 		
 		// Create paragraphs and lists using DOM API
 		const p1 = guideEl.createEl('p');
-		p1.textContent = '在 Linter 设置中添加 Custom Command：';
+		p1.textContent = '在 linter 设置中添加 custom command：';
 		
 		const ol = guideEl.createEl('ol');
 		const li1 = ol.createEl('li');
-		li1.textContent = '打开 Linter 设置 → Custom Commands';
+		li1.textContent = '打开 linter 设置 → custom commands';
 		const li2 = ol.createEl('li');
 		li2.appendText('添加命令：');
 		const code = li2.createEl('code');
-		code.textContent = 'Smart Spacing for Chinese: Fix all spacing (Chinese/Bold/Italic)';
+		code.textContent = 'Smart Spacing for Chinese: Fix all spacing (Chinese/bold/italic)';
 		const li3 = ol.createEl('li');
-		li3.textContent = 'Linter 会在格式化时自动调用本插件';
+		li3.textContent = 'linter 会在格式化时自动调用本插件';
 		
 		const p2 = guideEl.createEl('p');
 		const strong1 = p2.createEl('strong');
@@ -572,7 +572,7 @@ class SmartSpacingSettingTab extends PluginSettingTab {
 		const li5 = ul.createEl('li');
 		li5.appendText('✅ ');
 		const strong3 = li5.createEl('strong');
-		strong3.textContent = 'Linter 负责';
+		strong3.textContent = 'linter 负责';
 		li5.appendText('：中英文空格、中数字空格、其他格式化');
 	}
 }
