@@ -33,7 +33,7 @@ export default class SmartSpacingPlugin extends Plugin {
 		// Command: Fix all spacing (designed for Linter custom command)
 		this.addCommand({
 			id: 'fix-all-spacing',
-			name: 'Fix all spacing (Chinese/bold/italic)',
+			name: 'Fix all spacing',
 			editorCallback: (editor: Editor, view: MarkdownView) => {
 				this.formatEditor(editor, true);
 			}
@@ -555,7 +555,7 @@ class SmartSpacingSettingTab extends PluginSettingTab {
 		const li2 = ol.createEl('li');
 		li2.appendText('添加命令：');
 		const code = li2.createEl('code');
-		code.textContent = 'Smart Spacing for Chinese: Fix all spacing (Chinese/bold/italic)';
+		code.textContent = 'Smart spacing for chinese: fix all spacing';
 		const li3 = ol.createEl('li');
 		li3.textContent = 'linter 会在格式化时自动调用本插件';
 		
