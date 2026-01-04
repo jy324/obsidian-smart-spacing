@@ -1,10 +1,10 @@
 {
-	"id": "obsidian-smart-spacing",
+	"id": "smart-spacing-chinese",
 	"name": "Smart Spacing for Chinese",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"minAppVersion": "0.15.0",
-	"description": "Fix bold/italic spacing issues that Linter cannot handle. Removes internal spaces (** text ** → **text**) and adds proper external spaces.",
+	"description": "Fix bold/italic spacing issues that Linter cannot handle. Removes internal spaces and adds proper external spaces.",
 	"author": "jy324",
-	"authorUrl": "https://github.com/jy324/obsidian-smart-spacing",
+	"authorUrl": "https://github.com/jy324",
 	"isDesktopOnly": false
 }
