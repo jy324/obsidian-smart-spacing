@@ -555,9 +555,9 @@ class SmartSpacingSettingTab extends PluginSettingTab {
 		const li2 = ol.createEl('li');
 		li2.appendText('添加命令：');
 		const code = li2.createEl('code');
-		code.textContent = 'Smart spacing for Chinese: fix all spacing';
+		code.textContent = 'Smart spacing for chinese: fix all spacing';
 		const li3 = ol.createEl('li');
-		li3.textContent = 'linter 会在格式化时自动调用本插件';
+		li3.textContent = 'Linter 会在格式化时自动调用本插件';
 		
 		const p2 = guideEl.createEl('p');
 		const strong1 = p2.createEl('strong');
