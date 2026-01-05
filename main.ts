@@ -34,7 +34,7 @@ export default class SmartSpacingPlugin extends Plugin {
 		this.addCommand({
 			id: 'fix-all-spacing',
 			name: 'Fix all spacing',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
+			editorCallback: (editor: Editor, _view: MarkdownView) => {
 				this.formatEditor(editor, true);
 			}
 		});
@@ -43,7 +43,7 @@ export default class SmartSpacingPlugin extends Plugin {
 		this.addCommand({
 			id: 'fix-bold-spacing',
 			name: 'Fix bold spacing only',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
+			editorCallback: (editor: Editor, _view: MarkdownView) => {
 				this.formatEditor(editor, true);
 			}
 		});
@@ -52,7 +52,7 @@ export default class SmartSpacingPlugin extends Plugin {
 		this.addCommand({
 			id: 'fix-all-spacing-silent',
 			name: 'Fix all spacing (silent)',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
+			editorCallback: (editor: Editor, _view: MarkdownView) => {
 				this.formatEditor(editor, false);
 			}
 		});
@@ -163,7 +163,7 @@ export default class SmartSpacingPlugin extends Plugin {
 		// State machine to find and clean bold/italic markers
 		let result = '';
 		let i = 0;
-		let markerStack: { type: string; startPos: number }[] = [];
+		const markerStack: { type: string; startPos: number }[] = [];
 		const len = protectedLine.length;
 
 		while (i < len) {
