@@ -1,7 +1,7 @@
 {
 	"id": "smart-spacing-chinese",
 	"name": "Smart Spacing for Chinese",
-	"version": "1.0.2",
+	"version": "1.0.3",
 	"minAppVersion": "0.15.0",
 	"description": "Fix bold/italic spacing issues that Linter cannot handle. Removes internal spaces and adds proper external spaces.",
 	"author": "jy324",
