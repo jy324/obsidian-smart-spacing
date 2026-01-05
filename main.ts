@@ -231,7 +231,7 @@ export default class SmartSpacingPlugin extends Plugin {
 		}
 
 		// Restore protected sections
-		for (const { placeholder, original } of protectedSections) {
+		for (const { placeholder, original } of protectedSections.reverse()) {
 			result = result.replace(placeholder, original);
 		}
 
@@ -331,7 +331,7 @@ export default class SmartSpacingPlugin extends Plugin {
 		}
 
 		// Restore protected sections
-		for (const { placeholder, original } of protectedSections) {
+		for (const { placeholder, original } of protectedSections.reverse()) {
 			result = result.replace(placeholder, original);
 		}
 
@@ -438,7 +438,7 @@ export default class SmartSpacingPlugin extends Plugin {
 		}
 
 		// Restore protected sections
-		for (const { placeholder, original } of protectedSections) {
+		for (const { placeholder, original } of protectedSections.reverse()) {
 			result = result.replace(placeholder, original);
 		}
 

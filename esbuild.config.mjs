@@ -1,6 +1,7 @@
 import esbuild from "esbuild";
 import process from "process";
 import builtins from "builtin-modules";
+import { copyFileSync, mkdirSync, existsSync } from "fs";
 
 const banner =
 `/*
@@ -47,11 +48,23 @@ const context = await esbuild.context({
 	logLevel: "info",
 	sourcemap: prod ? false : "inline",
 	treeShaking: true,
-	outfile: "main.js",
+	outfile: prod ? "build/main.js" : "main.js",
 });
 
 if (prod) {
+	// Ensure build directory exists
+	if (!existsSync("build")) {
+		mkdirSync("build");
+	}
 	await context.rebuild();
+	// Copy manifest.json and styles.css (if exists) to build folder
+	copyFileSync("manifest.json", "build/manifest.json");
+	try {
+		copyFileSync("styles.css", "build/styles.css");
+	} catch {
+		// styles.css is optional
+	}
+	console.log("Build complete! Files are in the build/ folder.");
 	process.exit(0);
 } else {
 	await context.watch();
