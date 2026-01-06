@@ -1,5 +1,7 @@
 import { App, Editor, MarkdownView, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
 import { processText, SmartSpacingSettings } from './processor';
+import { createLivePreviewExtension } from './livePreviewExtension';
+import { Extension } from '@codemirror/state';
 
 // ============================================================================
 // Constants & Defaults
@@ -12,6 +14,7 @@ const DEFAULT_SETTINGS: SmartSpacingSettings = {
 	spaceBetweenChineseAndItalic: true,
 	skipCodeBlocks: true,
 	skipInlineCode: true,
+	enableLivePreview: false,
 };
 
 // ============================================================================
@@ -19,9 +22,13 @@ const DEFAULT_SETTINGS: SmartSpacingSettings = {
 // ============================================================================
 export default class SmartSpacingPlugin extends Plugin {
 	settings: SmartSpacingSettings;
+	private editorExtensions: Extension[] = [];
 
 	async onload() {
 		await this.loadSettings();
+
+		// Register CodeMirror 6 extension for live preview
+		this.updateEditorExtensions();
 
 		// Command: Fix all spacing (designed for Linter custom command)
 		this.addCommand({
@@ -66,6 +73,37 @@ export default class SmartSpacingPlugin extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
+		// Update CodeMirror extensions when settings change
+		this.updateEditorExtensions();
+	}
+
+	/**
+	 * Update CodeMirror extensions based on current settings
+	 */
+	updateEditorExtensions() {
+		// Remove old extensions
+		this.editorExtensions.forEach(ext => {
+			this.app.workspace.updateOptions();
+		});
+		this.editorExtensions = [];
+
+		// Add new extension if live preview is enabled
+		if (this.settings.enableLivePreview) {
+			const extension = createLivePreviewExtension(this.settings);
+			this.registerEditorExtension(extension);
+			this.editorExtensions.push(extension);
+		}
+
+		// Refresh all open markdown views
+		this.app.workspace.iterateAllLeaves(leaf => {
+			if (leaf.view instanceof MarkdownView) {
+				// Force refresh of the editor
+				const view = leaf.view;
+				if (view.editor) {
+					view.editor.refresh();
+				}
+			}
+		});
 	}
 
 	/**
@@ -178,6 +216,20 @@ class SmartSpacingSettingTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.skipInlineCode)
 				.onChange(async (value) => {
 					this.plugin.settings.skipInlineCode = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('实时预览模式 (实验性)')
+			.setHeading();
+
+		new Setting(containerEl)
+			.setName('启用实时预览格式化')
+			.setDesc('在 live preview 模式下实时显示间距建议（需要重新打开文件生效）')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.enableLivePreview)
+				.onChange(async (value) => {
+					this.plugin.settings.enableLivePreview = value;
 					await this.plugin.saveSettings();
 				}));
 

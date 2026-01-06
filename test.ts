@@ -17,6 +17,7 @@ const defaultSettings: SmartSpacingSettings = {
     spaceBetweenChineseAndItalic: true,
     skipCodeBlocks: true,
     skipInlineCode: true,
+    enableLivePreview: false,
 };
 
 // ============================================================================
