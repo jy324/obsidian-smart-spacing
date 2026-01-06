@@ -81,10 +81,7 @@ export default class SmartSpacingPlugin extends Plugin {
 	 * Update CodeMirror extensions based on current settings
 	 */
 	updateEditorExtensions() {
-		// Remove old extensions
-		this.editorExtensions.forEach(ext => {
-			this.app.workspace.updateOptions();
-		});
+		// Clear the extensions array
 		this.editorExtensions = [];
 
 		// Add new extension if live preview is enabled
@@ -95,12 +92,14 @@ export default class SmartSpacingPlugin extends Plugin {
 		}
 
 		// Refresh all open markdown views
-		this.app.workspace.iterateAllLeaves(leaf => {
+		this.app.workspace.iterateAllLeaves((leaf: any) => {
 			if (leaf.view instanceof MarkdownView) {
-				// Force refresh of the editor
+				// Force CodeMirror to refresh
 				const view = leaf.view;
-				if (view.editor) {
-					view.editor.refresh();
+				// In Obsidian, the editor is automatically refreshed when extensions change
+				// We just need to ensure the editor updates its state
+				if (view.editor && view.editor.cm) {
+					view.editor.cm.requestMeasure();
 				}
 			}
 		});

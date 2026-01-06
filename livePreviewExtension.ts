@@ -15,12 +15,32 @@ function buildDecorations(view: EditorView, settings: SmartSpacingSettings): Dec
 	const text = view.state.doc.toString();
 	const lines = text.split('\n');
 	let lineStart = 0;
+	let inCodeBlock = false;
+	let inLatexBlock = false;
 
 	for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
 		const line = lines[lineIndex];
+		const trim = line.trim();
 		
-		// Skip empty lines
-		if (line.trim().length === 0) {
+		// Track code blocks
+		if (settings.skipCodeBlocks && /^```|^~~~/.test(trim)) {
+			inCodeBlock = !inCodeBlock;
+			lineStart += line.length + 1; // +1 for newline
+			continue;
+		}
+		
+		// Track LaTeX blocks
+		if (/^\s*\$\$/.test(trim)) {
+			// Check for single line $$ ... $$ (e.g. $$ E=mc^2 $$)
+			if (!/^\s*\$\$.*\$\$\s*$/.test(trim) || trim === '$$') {
+				inLatexBlock = !inLatexBlock;
+			}
+			lineStart += line.length + 1;
+			continue;
+		}
+		
+		// Skip if inside blocks
+		if (inCodeBlock || inLatexBlock || trim.length === 0) {
 			lineStart += line.length + 1; // +1 for newline
 			continue;
 		}
@@ -51,12 +71,6 @@ interface DecorationInfo {
  */
 function getLineDecorations(line: string, lineStart: number, settings: SmartSpacingSettings): DecorationInfo[] {
 	const decorations: DecorationInfo[] = [];
-	
-	// Skip if line is in a code block (detected by ``` or ~~~)
-	// This is a simple heuristic - full protection would need state tracking across lines
-	if (line.trim().startsWith('```') || line.trim().startsWith('~~~')) {
-		return decorations;
-	}
 	
 	// Protect inline code and latex before processing
 	const protectedRanges = getProtectedRanges(line, settings);
@@ -193,10 +207,24 @@ function getProtectedRanges(line: string, settings: SmartSpacingSettings): Prote
 	}
 	
 	// Protect inline LaTeX ($...$)
-	const latexRegex = /(?<!\\)\$(?:\\.|[^$\\])*\$/g;
-	let match;
-	while ((match = latexRegex.exec(line)) !== null) {
-		ranges.push({ start: match.index, end: match.index + match[0].length });
+	// Use a simpler approach without negative lookbehind for better compatibility
+	for (let i = 0; i < line.length; i++) {
+		if (line[i] === '$') {
+			// Check if it's escaped
+			if (i > 0 && line[i - 1] === '\\') {
+				continue;
+			}
+			// Find the closing $
+			let j = i + 1;
+			while (j < line.length) {
+				if (line[j] === '$' && (j === 0 || line[j - 1] !== '\\')) {
+					ranges.push({ start: i, end: j + 1 });
+					i = j; // Skip to after this LaTeX block
+					break;
+				}
+				j++;
+			}
+		}
 	}
 	
 	// Protect list markers at the start of the line
@@ -264,15 +292,29 @@ export function createLivePreviewExtension(settings: SmartSpacingSettings) {
 	return ViewPlugin.fromClass(
 		class {
 			decorations: DecorationSet;
+			private updateTimeout: number | null = null;
 
 			constructor(view: EditorView) {
 				this.decorations = buildDecorations(view, settings);
 			}
 
 			update(update: ViewUpdate) {
-				// Rebuild decorations if document changed
-				if (update.docChanged || update.viewportChanged) {
+				// Only rebuild decorations if document changed
+				// Use a simple debounce to avoid excessive rebuilds during rapid typing
+				if (update.docChanged) {
+					// For performance, we rebuild immediately for small changes
+					// but could add debouncing here for very large documents
 					this.decorations = buildDecorations(update.view, settings);
+				} else if (update.viewportChanged) {
+					// Viewport changes are less frequent, rebuild immediately
+					this.decorations = buildDecorations(update.view, settings);
+				}
+			}
+
+			destroy() {
+				// Clean up timeout if any
+				if (this.updateTimeout !== null) {
+					clearTimeout(this.updateTimeout);
 				}
 			}
 		},
