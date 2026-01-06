@@ -1,168 +1,192 @@
+import { processText, SmartSpacingSettings } from './processor';
+import * as fs from 'fs';
+
 /**
- * Unit tests for Smart Spacing Plugin
+ * Unit tests for Smart Spacing Plugin Logic
  * Run with: npx ts-node test.ts
  */
 
 // ============================================================================
-// Test Helper Functions (copied from main.ts for standalone testing)
+// Test Configuration
 // ============================================================================
 
-function shouldAddSpaceBefore(char: string): boolean {
-    if (!char) return false;
-    if (char === ' ' || char === '\t') return false;
-    if (/[\u4e00-\u9fa5]/.test(char)) return true;
-    return false;
-}
-
-function shouldAddSpaceAfter(char: string): boolean {
-    if (!char) return false;
-    if (char === ' ' || char === '\t' || char === '\n') return false;
-    if (/[\u4e00-\u9fa5]/.test(char)) return true;
-    return false;
-}
-
-function fixBoldSpacingInLine(line: string): string {
-    // Protect inline code sections
-    const inlineCodeRegex = /`[^`]+`/g;
-    const protectedSections: { placeholder: string; original: string }[] = [];
-    let protectedLine = line;
-    
-    let match;
-    let index = 0;
-    while ((match = inlineCodeRegex.exec(line)) !== null) {
-        const placeholder = `\x00CODE${index}\x00`;
-        protectedSections.push({ placeholder, original: match[0] });
-        protectedLine = protectedLine.replace(match[0], placeholder);
-        index++;
-    }
-
-    // State machine for bold markers
-    let result = '';
-    let i = 0;
-    let isBold = false;
-    const len = protectedLine.length;
-
-    while (i < len) {
-        // Check for bold marker "**" (but not "***")
-        if (protectedLine[i] === '*' && protectedLine[i + 1] === '*' && protectedLine[i + 2] !== '*') {
-            if (!isBold) {
-                // OPENING BOLD
-                const charBefore = result[result.length - 1];
-                if (shouldAddSpaceBefore(charBefore)) {
-                    result += ' ';
-                }
-                result += '**';
-                isBold = true;
-                i += 2;
-            } else {
-                // CLOSING BOLD
-                result += '**';
-                isBold = false;
-                i += 2;
-                const charAfter = protectedLine[i];
-                if (shouldAddSpaceAfter(charAfter)) {
-                    result += ' ';
-                }
-            }
-        } 
-        // Handle "***" as bold+italic
-        else if (protectedLine[i] === '*' && protectedLine[i + 1] === '*' && protectedLine[i + 2] === '*') {
-            if (!isBold) {
-                const charBefore = result[result.length - 1];
-                if (shouldAddSpaceBefore(charBefore)) {
-                    result += ' ';
-                }
-                result += '***';
-                isBold = true;
-                i += 3;
-            } else {
-                result += '***';
-                isBold = false;
-                i += 3;
-                const charAfter = protectedLine[i];
-                if (shouldAddSpaceAfter(charAfter)) {
-                    result += ' ';
-                }
-            }
-        }
-        else {
-            result += protectedLine[i];
-            i++;
-        }
-    }
-
-    // Restore protected sections
-    for (const { placeholder, original } of protectedSections) {
-        result = result.replace(placeholder, original);
-    }
-
-    return result;
-}
+const defaultSettings: SmartSpacingSettings = {
+    removeInternalBoldSpaces: true,
+    spaceBetweenChineseAndBold: true,
+    spaceBetweenEnglishAndBold: false, // Default is false for English
+    spaceBetweenChineseAndItalic: true,
+    skipCodeBlocks: true,
+    skipInlineCode: true,
+};
 
 // ============================================================================
-// Test Cases
+// Test Runner
 // ============================================================================
 
-const testCases = [
-    // Basic cases
-    { input: '中文**加粗**中文', expected: '中文 **加粗** 中文', desc: 'Basic bold spacing' },
-    { input: '中文 **加粗** 中文', expected: '中文 **加粗** 中文', desc: 'Already has spaces' },
-    { input: '中文**加粗**', expected: '中文 **加粗**', desc: 'Bold at end' },
-    { input: '**加粗**中文', expected: '**加粗** 中文', desc: 'Bold at start' },
-    
-    // Multiple bold
-    { input: '中文**加粗**和**另一个**中文', expected: '中文 **加粗** 和 **另一个** 中文', desc: 'Multiple bold' },
-    
-    // Edge cases - NO internal spaces
-    { input: '**加粗内容**', expected: '**加粗内容**', desc: 'No modification when no adjacent Chinese' },
-    
-    // Mixed content
-    { input: '这是**bold**文本和**另一个**测试', expected: '这是 **bold** 文本和 **另一个** 测试', desc: 'Mixed Chinese-English in bold' },
-    
-    // Inline code protection
-    { input: '中文`code**不处理**`中文', expected: '中文`code**不处理**`中文', desc: 'Inline code should be protected' },
-    
-    // Punctuation (should NOT add space before punctuation)
-    { input: '中文**加粗**，继续', expected: '中文 **加粗**，继续', desc: 'No space before Chinese punctuation' },
-    { input: '中文**加粗**。结束', expected: '中文 **加粗**。结束', desc: 'No space before period' },
-    
-    // English adjacent (should NOT add space by default for English)
-    { input: 'English**bold**text', expected: 'English**bold**text', desc: 'No space for English by default' },
-    
-    // Bold with stars inside content - edge case
-    { input: '中文**2*3=6**中文', expected: '中文 **2*3=6** 中文', desc: 'Stars inside bold content' },
-    
-    // Triple star (bold+italic)
-    { input: '中文***粗斜***中文', expected: '中文 ***粗斜*** 中文', desc: 'Bold+italic handling' },
+interface TestCase {
+    input: string;
+    expected: string;
+    desc: string;
+    settings?: Partial<SmartSpacingSettings>;
+}
+
+const testCases: TestCase[] = [
+    // ------------------------------------------------------------------------
+    // Basic Spacing
+    // ------------------------------------------------------------------------
+    {
+        desc: 'Basic Chinese Bold Spacing',
+        input: '中文**加粗**中文',
+        expected: '中文 **加粗** 中文'
+    },
+    {
+        desc: 'Basic Chinese Italic Spacing',
+        input: '中文*斜体*中文',
+        expected: '中文 *斜体* 中文'
+    },
+    {
+        desc: 'Mixed Bold/Italic Spacing',
+        input: '中文***加粗斜体***中文',
+        expected: '中文 ***加粗斜体*** 中文'
+    },
+
+    // ------------------------------------------------------------------------
+    // Internal Space Removal
+    // ------------------------------------------------------------------------
+    {
+        desc: 'Remove internal spaces in bold',
+        input: '**  Content  **',
+        expected: '**Content**'
+    },
+    {
+        desc: 'Remove internal spaces in italic',
+        input: '*  Content  *',
+        expected: '*Content*'
+    },
+    {
+        desc: 'Remove internal spaces in bold+italic',
+        input: '***  Content  ***',
+        expected: '***Content***'
+    },
+    {
+        desc: 'Do not remove single space if it connects words (English)',
+        input: '** multiple words **',
+        expected: '**multiple words**' // Current logic trims nicely
+    },
+
+    // ------------------------------------------------------------------------
+    // Protection (Code, Latex, Lists)
+    // ------------------------------------------------------------------------
+    {
+        desc: 'Protect Inline Code',
+        input: 'Text `code ** bold ` Text',
+        expected: 'Text `code ** bold ` Text' // No spaces added inside code
+    },
+    {
+        desc: 'Protect LaTeX',
+        input: 'Text $E=mc^2$ Text',
+        expected: 'Text $E=mc^2$ Text' // No changes
+    },
+    {
+        desc: 'Protect List Markers (Star)',
+        input: '* List Item',
+        expected: '* List Item' // Should NOT become italic or wrapped
+    },
+    {
+        desc: 'Protect List Markers with indentation',
+        input: '  * List Item',
+        expected: '  * List Item'
+    },
+
+    // ------------------------------------------------------------------------
+    // Edge Cases
+    // ------------------------------------------------------------------------
+    {
+        desc: 'Punctuation interaction',
+        input: 'End.**Bold**',
+        expected: 'End.**Bold**' // No space after period usually
+    },
+    {
+        desc: 'English interaction (Default: No space)',
+        input: 'Word**Bold**Word',
+        expected: 'Word**Bold**Word'
+    },
+    {
+        desc: 'English interaction (Enabled)',
+        input: 'Word**Bold**Word',
+        expected: 'Word **Bold** Word',
+        settings: { spaceBetweenEnglishAndBold: true }
+    },
+    {
+        desc: 'Consecutive marks',
+        input: '中文**Bold**中文**Bold**',
+        expected: '中文 **Bold** 中文 **Bold**'
+    },
+
+    // ------------------------------------------------------------------------
+    // Complex Integration
+    // ------------------------------------------------------------------------
+    {
+        desc: 'Complex line with code and bold',
+        input: 'Use `const x` in **TypeScript** code.',
+        expected: 'Use `const x` in **TypeScript** code.' // No extra spaces needed for English default
+    },
+    {
+        desc: 'Complex line with Chinese and code',
+        input: '使用`code`进行**加粗**',
+        expected: '使用`code`进行 **加粗**' // Space before bold (after Chinese char `行`)
+    },
+    {
+        desc: 'List item with bold',
+        input: '* **Bold Item**',
+        expected: '* **Bold Item**' // The list star is protected. The bold is fixed.
+    },
+    {
+        desc: 'List item with internal spaces to clean',
+        input: '* **  Bold Item  **',
+        expected: '* **Bold Item**'
+    }
 ];
 
-// ============================================================================
-// Run Tests
-// ============================================================================
+function runTests() {
+    let output = '';
+    const log = (msg: string) => {
+        console.log(msg);
+        output += msg + '\n';
+    };
 
-console.debug('='.repeat(60));
-console.debug('Smart Spacing Plugin - Unit Tests');
-console.debug('='.repeat(60));
+    log('='.repeat(60));
+    log('Running Smart Spacing Logic Tests');
+    log('='.repeat(60));
 
-let passed = 0;
-let failed = 0;
+    let passed = 0;
+    let failed = 0;
 
-for (const tc of testCases) {
-    const result = fixBoldSpacingInLine(tc.input);
-    const success = result === tc.expected;
-    
-    if (success) {
-        passed++;
-        console.debug(`✅ PASS: ${tc.desc}`);
-    } else {
-        failed++;
-        console.debug(`❌ FAIL: ${tc.desc}`);
-        console.debug(`   Input:    "${tc.input}"`);
-        console.debug(`   Expected: "${tc.expected}"`);
-        console.debug(`   Got:      "${result}"`);
+    for (const tc of testCases) {
+        // Merge default settings with test case specific settings
+        const currentSettings = { ...defaultSettings, ...(tc.settings || {}) };
+
+        const result = processText(tc.input, currentSettings);
+
+        if (result === tc.expected) {
+            passed++;
+            log(`✅ PASS: ${tc.desc}`);
+        } else {
+            failed++;
+            log(`❌ FAIL: ${tc.desc}`);
+            log(`   Input:    "${tc.input}"`);
+            log(`   Expected: "${tc.expected}"`);
+            log(`   Got:      "${result}"`);
+        }
     }
+
+    log('='.repeat(60));
+    log(`Results: ${passed} passed, ${failed} failed`);
+    log('='.repeat(60));
+
+    fs.writeFileSync('test_results.txt', output);
+
+    if (failed > 0) process.exit(1);
 }
 
-console.debug('='.repeat(60));
-console.debug(`Results: ${passed} passed, ${failed} failed`);
-console.debug('='.repeat(60));
+runTests();

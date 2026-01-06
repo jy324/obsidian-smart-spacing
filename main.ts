@@ -1,16 +1,9 @@
 import { App, Editor, MarkdownView, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { processText, SmartSpacingSettings } from './processor';
 
 // ============================================================================
-// Settings Interface (简化版 - 专注于加粗/斜体处理，配合 Linter 使用)
+// Constants & Defaults
 // ============================================================================
-interface SmartSpacingSettings {
-	removeInternalBoldSpaces: boolean;  // 清理加粗内部空格
-	spaceBetweenChineseAndBold: boolean;
-	spaceBetweenEnglishAndBold: boolean;
-	spaceBetweenChineseAndItalic: boolean;
-	skipCodeBlocks: boolean;
-	skipInlineCode: boolean;
-}
 
 const DEFAULT_SETTINGS: SmartSpacingSettings = {
 	removeInternalBoldSpaces: true,
@@ -39,7 +32,7 @@ export default class SmartSpacingPlugin extends Plugin {
 			}
 		});
 
-		// Command: Fix only bold spacing
+		// Command: Fix bold spacing (Legacy command, performs full fix)
 		this.addCommand({
 			id: 'fix-bold-spacing',
 			name: 'Fix bold spacing only',
@@ -60,7 +53,7 @@ export default class SmartSpacingPlugin extends Plugin {
 		// Add settings tab
 		this.addSettingTab(new SmartSpacingSettingTab(this.app, this));
 
-		console.debug('Smart Spacing Plugin loaded (Linter companion mode)');
+		console.debug('Smart Spacing Plugin loaded (Refactored)');
 	}
 
 	onunload() {
@@ -80,369 +73,19 @@ export default class SmartSpacingPlugin extends Plugin {
 	 */
 	formatEditor(editor: Editor, showNotice: boolean): void {
 		const content = editor.getValue();
-		const newContent = this.processText(content);
+		// Use the extracted processor
+		const newContent = processText(content, this.settings);
+
 		if (content !== newContent) {
 			const cursor = editor.getCursor();
 			editor.setValue(newContent);
 			editor.setCursor(cursor);
 			if (showNotice) {
-				new Notice('Bold/italic spacing fixed');
+				new Notice('Smart spacing fixed');
 			}
 		} else if (showNotice) {
 			new Notice('No changes needed.');
 		}
-	}
-
-	// ========================================================================
-	// Main Processing Function
-	// ========================================================================
-	processText(text: string): string {
-		let result = text;
-		
-		// Step 1: Remove internal bold/italic spaces (** text ** → **text**)
-		if (this.settings.removeInternalBoldSpaces) {
-			result = this.removeInternalSpaces(result);
-		}
-		
-		// Step 2: Fix bold spacing (uses state machine)
-		if (this.settings.spaceBetweenChineseAndBold) {
-			result = this.fixBoldSpacing(result);
-		}
-
-		// Step 3: Fix italic spacing
-		if (this.settings.spaceBetweenChineseAndItalic) {
-			result = this.fixItalicSpacing(result);
-		}
-
-		return result;
-	}
-
-	// ========================================================================
-	// Remove Internal Spaces (** text ** → **text**, * text * → *text*)
-	// ========================================================================
-	removeInternalSpaces(text: string): string {
-		const lines = text.split('\n');
-		const resultLines: string[] = [];
-		let inCodeBlock = false;
-
-		for (const line of lines) {
-			if (this.settings.skipCodeBlocks && /^```|^~~~/.test(line.trim())) {
-				inCodeBlock = !inCodeBlock;
-				resultLines.push(line);
-				continue;
-			}
-
-			if (inCodeBlock) {
-				resultLines.push(line);
-				continue;
-			}
-
-			resultLines.push(this.removeInternalSpacesInLine(line));
-		}
-
-		return resultLines.join('\n');
-	}
-
-	removeInternalSpacesInLine(line: string): string {
-		// Protect inline code
-		const protectedSections: { placeholder: string; original: string }[] = [];
-		let protectedLine = line;
-		
-		if (this.settings.skipInlineCode) {
-			const inlineCodeRegex = /`[^`]+`/g;
-			let match;
-			let index = 0;
-			while ((match = inlineCodeRegex.exec(line)) !== null) {
-				const placeholder = `\x00CODE${index}\x00`;
-				protectedSections.push({ placeholder, original: match[0] });
-				protectedLine = protectedLine.replace(match[0], placeholder);
-				index++;
-			}
-		}
-
-		// State machine to find and clean bold/italic markers
-		let result = '';
-		let i = 0;
-		const markerStack: { type: string; startPos: number }[] = [];
-		const len = protectedLine.length;
-
-		while (i < len) {
-			// Check for *** (bold+italic)
-			if (protectedLine[i] === '*' && protectedLine[i + 1] === '*' && protectedLine[i + 2] === '*') {
-				const lastMarker = markerStack[markerStack.length - 1];
-				if (lastMarker && lastMarker.type === '***') {
-					// Closing ***
-					while (result.length > lastMarker.startPos && /\s/.test(result[result.length - 1])) {
-						result = result.slice(0, -1);
-					}
-					result += '***';
-					markerStack.pop();
-					i += 3;
-				} else {
-					// Opening ***
-					result += '***';
-					markerStack.push({ type: '***', startPos: result.length });
-					i += 3;
-					while (i < len && /\s/.test(protectedLine[i])) i++;
-				}
-			}
-			// Check for ** (bold)
-			else if (protectedLine[i] === '*' && protectedLine[i + 1] === '*' && protectedLine[i + 2] !== '*') {
-				const lastMarker = markerStack[markerStack.length - 1];
-				if (lastMarker && lastMarker.type === '**') {
-					// Closing **
-					while (result.length > lastMarker.startPos && /\s/.test(result[result.length - 1])) {
-						result = result.slice(0, -1);
-					}
-					result += '**';
-					markerStack.pop();
-					i += 2;
-				} else {
-					// Opening **
-					result += '**';
-					markerStack.push({ type: '**', startPos: result.length });
-					i += 2;
-					while (i < len && /\s/.test(protectedLine[i])) i++;
-				}
-			}
-			// Check for single * (italic) - must not be adjacent to another *
-			else if (protectedLine[i] === '*' && protectedLine[i - 1] !== '*' && protectedLine[i + 1] !== '*') {
-				const lastMarker = markerStack[markerStack.length - 1];
-				if (lastMarker && lastMarker.type === '*') {
-					// Closing *
-					while (result.length > lastMarker.startPos && /\s/.test(result[result.length - 1])) {
-						result = result.slice(0, -1);
-					}
-					result += '*';
-					markerStack.pop();
-					i += 1;
-				} else {
-					// Opening *
-					result += '*';
-					markerStack.push({ type: '*', startPos: result.length });
-					i += 1;
-					while (i < len && /\s/.test(protectedLine[i])) i++;
-				}
-			}
-			else {
-				result += protectedLine[i];
-				i++;
-			}
-		}
-
-		// Restore protected sections
-		for (const { placeholder, original } of protectedSections.reverse()) {
-			result = result.replace(placeholder, original);
-		}
-
-		return result;
-	}
-
-	// ========================================================================
-	// Bold Spacing Fixer (State Machine)
-	// ========================================================================
-	fixBoldSpacing(text: string): string {
-		const lines = text.split('\n');
-		const resultLines: string[] = [];
-		let inCodeBlock = false;
-
-		for (const line of lines) {
-			if (this.settings.skipCodeBlocks && /^```|^~~~/.test(line.trim())) {
-				inCodeBlock = !inCodeBlock;
-				resultLines.push(line);
-				continue;
-			}
-
-			if (inCodeBlock) {
-				resultLines.push(line);
-				continue;
-			}
-
-			resultLines.push(this.fixBoldSpacingInLine(line));
-		}
-
-		return resultLines.join('\n');
-	}
-
-	fixBoldSpacingInLine(line: string): string {
-		// Protect inline code
-		const protectedSections: { placeholder: string; original: string }[] = [];
-		let protectedLine = line;
-		
-		if (this.settings.skipInlineCode) {
-			const inlineCodeRegex = /`[^`]+`/g;
-			let match;
-			let index = 0;
-			while ((match = inlineCodeRegex.exec(line)) !== null) {
-				const placeholder = `\x00CODE${index}\x00`;
-				protectedSections.push({ placeholder, original: match[0] });
-				protectedLine = protectedLine.replace(match[0], placeholder);
-				index++;
-			}
-		}
-
-		// State machine for bold markers
-		let result = '';
-		let i = 0;
-		let isBold = false;
-		const len = protectedLine.length;
-
-		while (i < len) {
-			// Check for *** (bold+italic)
-			if (protectedLine[i] === '*' && protectedLine[i + 1] === '*' && protectedLine[i + 2] === '*') {
-				if (!isBold) {
-					if (this.shouldAddSpaceBefore(result[result.length - 1])) {
-						result += ' ';
-					}
-					result += '***';
-					isBold = true;
-					i += 3;
-				} else {
-					result += '***';
-					isBold = false;
-					i += 3;
-					if (this.shouldAddSpaceAfter(protectedLine[i])) {
-						result += ' ';
-					}
-				}
-			}
-			// Check for ** (bold)
-			else if (protectedLine[i] === '*' && protectedLine[i + 1] === '*' && protectedLine[i + 2] !== '*') {
-				if (!isBold) {
-					if (this.shouldAddSpaceBefore(result[result.length - 1])) {
-						result += ' ';
-					}
-					result += '**';
-					isBold = true;
-					i += 2;
-				} else {
-					result += '**';
-					isBold = false;
-					i += 2;
-					if (this.shouldAddSpaceAfter(protectedLine[i])) {
-						result += ' ';
-					}
-				}
-			}
-			else {
-				result += protectedLine[i];
-				i++;
-			}
-		}
-
-		// Restore protected sections
-		for (const { placeholder, original } of protectedSections.reverse()) {
-			result = result.replace(placeholder, original);
-		}
-
-		return result;
-	}
-
-	shouldAddSpaceBefore(char: string): boolean {
-		if (!char || char === ' ' || char === '\t') return false;
-		if (/[\u4e00-\u9fa5]/.test(char)) return this.settings.spaceBetweenChineseAndBold;
-		if (/[a-zA-Z0-9]/.test(char)) return this.settings.spaceBetweenEnglishAndBold;
-		return false;
-	}
-
-	shouldAddSpaceAfter(char: string): boolean {
-		if (!char || char === ' ' || char === '\t' || char === '\n') return false;
-		if (/[\u4e00-\u9fa5]/.test(char)) return this.settings.spaceBetweenChineseAndBold;
-		if (/[a-zA-Z0-9]/.test(char)) return this.settings.spaceBetweenEnglishAndBold;
-		return false;
-	}
-
-	// ========================================================================
-	// Italic Spacing Fixer (State Machine)
-	// ========================================================================
-	fixItalicSpacing(text: string): string {
-		const lines = text.split('\n');
-		const resultLines: string[] = [];
-		let inCodeBlock = false;
-
-		for (const line of lines) {
-			if (this.settings.skipCodeBlocks && /^```|^~~~/.test(line.trim())) {
-				inCodeBlock = !inCodeBlock;
-				resultLines.push(line);
-				continue;
-			}
-
-			if (inCodeBlock) {
-				resultLines.push(line);
-				continue;
-			}
-
-			resultLines.push(this.fixItalicSpacingInLine(line));
-		}
-
-		return resultLines.join('\n');
-	}
-
-	fixItalicSpacingInLine(line: string): string {
-		// Protect inline code and bold sections
-		const protectedSections: { placeholder: string; original: string }[] = [];
-		let protectedLine = line;
-		
-		if (this.settings.skipInlineCode) {
-			const inlineCodeRegex = /`[^`]+`/g;
-			let match;
-			let index = 0;
-			while ((match = inlineCodeRegex.exec(line)) !== null) {
-				const placeholder = `\x00CODE${index}\x00`;
-				protectedSections.push({ placeholder, original: match[0] });
-				protectedLine = protectedLine.replace(match[0], placeholder);
-				index++;
-			}
-		}
-
-		// Protect bold and bold+italic
-		const boldRegex = /\*\*\*[^*]+\*\*\*|\*\*[^*]+\*\*/g;
-		let boldMatch;
-		let boldIndex = 0;
-		while ((boldMatch = boldRegex.exec(protectedLine)) !== null) {
-			const placeholder = `\x00BOLD${boldIndex}\x00`;
-			protectedSections.push({ placeholder, original: boldMatch[0] });
-			protectedLine = protectedLine.replace(boldMatch[0], placeholder);
-			boldIndex++;
-		}
-
-		// State machine for single * (italic)
-		let result = '';
-		let i = 0;
-		let isItalic = false;
-		const len = protectedLine.length;
-
-		while (i < len) {
-			if (protectedLine[i] === '*' && protectedLine[i - 1] !== '*' && protectedLine[i + 1] !== '*') {
-				if (!isItalic) {
-					const charBefore = result[result.length - 1];
-					if (charBefore && /[\u4e00-\u9fa5]/.test(charBefore) && charBefore !== ' ') {
-						result += ' ';
-					}
-					result += '*';
-					isItalic = true;
-					i++;
-				} else {
-					result += '*';
-					isItalic = false;
-					i++;
-					const charAfter = protectedLine[i];
-					if (charAfter && /[\u4e00-\u9fa5]/.test(charAfter)) {
-						result += ' ';
-					}
-				}
-			} else {
-				result += protectedLine[i];
-				i++;
-			}
-		}
-
-		// Restore protected sections
-		for (const { placeholder, original } of protectedSections.reverse()) {
-			result = result.replace(placeholder, original);
-		}
-
-		return result;
 	}
 }
 
@@ -464,8 +107,8 @@ class SmartSpacingSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName('Smart spacing')
 			.setHeading();
-		
-		containerEl.createEl('p', { 
+
+		containerEl.createEl('p', {
 			text: '💡 此插件专注于处理加粗/斜体的空格问题，建议配合 linter 插件使用。',
 			cls: 'setting-item-description'
 		});
@@ -542,13 +185,13 @@ class SmartSpacingSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName('📋 配合 linter 使用')
 			.setHeading();
-		
+
 		const guideEl = containerEl.createEl('div', { cls: 'setting-item-description' });
-		
+
 		// Create paragraphs and lists using DOM API
 		const p1 = guideEl.createEl('p');
 		p1.textContent = '在 linter 设置中添加 custom command：';
-		
+
 		const ol = guideEl.createEl('ol');
 		const li1 = ol.createEl('li');
 		li1.textContent = '打开 linter 设置 → custom commands';
@@ -558,11 +201,11 @@ class SmartSpacingSettingTab extends PluginSettingTab {
 		code.textContent = 'Smart spacing for chinese: fix all spacing';
 		const li3 = ol.createEl('li');
 		li3.textContent = 'Linter 会在格式化时自动调用本插件';
-		
+
 		const p2 = guideEl.createEl('p');
 		const strong1 = p2.createEl('strong');
 		strong1.textContent = '分工说明：';
-		
+
 		const ul = guideEl.createEl('ul');
 		const li4 = ul.createEl('li');
 		li4.appendText('✅ ');
