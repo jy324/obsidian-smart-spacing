@@ -1,0 +1,19 @@
+/* Smart Spacing Plugin Styles */
+
+/* Visual hint for spacing corrections in live preview */
+.smart-spacing-hint {
+	color: transparent;
+	background-color: rgba(100, 150, 255, 0.1);
+	border-left: 1px solid rgba(100, 150, 255, 0.3);
+	border-right: 1px solid rgba(100, 150, 255, 0.3);
+	display: inline-block;
+	width: 0.5em;
+	pointer-events: none;
+}
+
+/* Dim the hint in dark mode */
+.theme-dark .smart-spacing-hint {
+	background-color: rgba(100, 150, 255, 0.08);
+	border-left: 1px solid rgba(100, 150, 255, 0.2);
+	border-right: 1px solid rgba(100, 150, 255, 0.2);
+}

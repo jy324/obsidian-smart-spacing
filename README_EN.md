@@ -62,6 +62,16 @@ Disable any bold-related regex rules in Linter (if any) and let this plugin hand
 | Add space between Chinese and italic | ✅ | `中文*斜体*` → `中文 *斜体*` |
 | Skip code blocks | ✅ | Protect content inside ``` |
 | Skip inline code | ✅ | Protect content inside \`code\` |
+| Enable live preview formatting (Experimental) | ❌ | Show real-time spacing hints in live preview mode |
+
+### 🎨 Live Preview Mode (Experimental)
+
+When enabled, visual hints will appear in live preview mode to show where spaces should be added, without modifying the source text. This helps:
+- See formatting suggestions in real-time
+- Understand what needs adjustment while editing
+- No impact on source until you manually run format commands
+
+**Note**: After enabling, you need to reopen files for the changes to take effect.
 
 ## Installation
 

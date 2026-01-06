@@ -46,9 +46,20 @@ interface DecorationInfo {
 
 /**
  * Analyze a line and return decorations for spacing corrections
+ * Note: This is a simplified version for live preview that doesn't modify text,
+ * just shows visual hints where spaces should be added
  */
 function getLineDecorations(line: string, lineStart: number, settings: SmartSpacingSettings): DecorationInfo[] {
 	const decorations: DecorationInfo[] = [];
+	
+	// Skip if line is in a code block (detected by ``` or ~~~)
+	// This is a simple heuristic - full protection would need state tracking across lines
+	if (line.trim().startsWith('```') || line.trim().startsWith('~~~')) {
+		return decorations;
+	}
+	
+	// Protect inline code and latex before processing
+	const protectedRanges = getProtectedRanges(line, settings);
 	
 	// Simple state machine to track bold/italic markers
 	let i = 0;
@@ -57,6 +68,12 @@ function getLineDecorations(line: string, lineStart: number, settings: SmartSpac
 	let isItalic = false;
 
 	while (i < len) {
+		// Skip if we're in a protected range
+		if (isInProtectedRange(i, protectedRanges)) {
+			i++;
+			continue;
+		}
+
 		// Check for bold markers (**)
 		if (i + 1 < len && line[i] === '*' && line[i + 1] === '*') {
 			// Check if this is actually *** (bold+italic)
@@ -65,7 +82,7 @@ function getLineDecorations(line: string, lineStart: number, settings: SmartSpac
 				if (!isBold) {
 					// Opening ***
 					const charBefore = i > 0 ? line[i - 1] : '';
-					if (shouldAddSpaceBefore(charBefore, settings)) {
+					if (shouldAddSpaceBefore(charBefore, settings) && !isInProtectedRange(i - 1, protectedRanges)) {
 						// Add decoration to show space should be here
 						decorations.push({
 							from: lineStart + i,
@@ -86,7 +103,7 @@ function getLineDecorations(line: string, lineStart: number, settings: SmartSpac
 			if (!isBold) {
 				// Opening **
 				const charBefore = i > 0 ? line[i - 1] : '';
-				if (shouldAddSpaceBefore(charBefore, settings)) {
+				if (shouldAddSpaceBefore(charBefore, settings) && !isInProtectedRange(i - 1, protectedRanges)) {
 					decorations.push({
 						from: lineStart + i,
 						to: lineStart + i,
@@ -99,7 +116,7 @@ function getLineDecorations(line: string, lineStart: number, settings: SmartSpac
 			} else {
 				// Closing **
 				const charAfter = i + 2 < len ? line[i + 2] : '';
-				if (shouldAddSpaceAfter(charAfter, settings)) {
+				if (shouldAddSpaceAfter(charAfter, settings) && !isInProtectedRange(i + 2, protectedRanges)) {
 					decorations.push({
 						from: lineStart + i + 2,
 						to: lineStart + i + 2,
@@ -120,7 +137,7 @@ function getLineDecorations(line: string, lineStart: number, settings: SmartSpac
 			if (!isItalic) {
 				// Opening *
 				const charBefore = i > 0 ? line[i - 1] : '';
-				if (settings.spaceBetweenChineseAndItalic && isChinese(charBefore) && charBefore !== ' ') {
+				if (settings.spaceBetweenChineseAndItalic && isChinese(charBefore) && charBefore !== ' ' && !isInProtectedRange(i - 1, protectedRanges)) {
 					decorations.push({
 						from: lineStart + i,
 						to: lineStart + i,
@@ -133,7 +150,7 @@ function getLineDecorations(line: string, lineStart: number, settings: SmartSpac
 			} else {
 				// Closing *
 				const charAfter = i + 1 < len ? line[i + 1] : '';
-				if (settings.spaceBetweenChineseAndItalic && isChinese(charAfter)) {
+				if (settings.spaceBetweenChineseAndItalic && isChinese(charAfter) && !isInProtectedRange(i + 1, protectedRanges)) {
 					decorations.push({
 						from: lineStart + i + 1,
 						to: lineStart + i + 1,
@@ -153,6 +170,46 @@ function getLineDecorations(line: string, lineStart: number, settings: SmartSpac
 	}
 
 	return decorations;
+}
+
+/**
+ * Get ranges that should be protected from decoration (inline code, latex, etc.)
+ */
+interface ProtectedRange {
+	start: number;
+	end: number;
+}
+
+function getProtectedRanges(line: string, settings: SmartSpacingSettings): ProtectedRange[] {
+	const ranges: ProtectedRange[] = [];
+	
+	// Protect inline code (`code`)
+	if (settings.skipInlineCode) {
+		const codeRegex = /`[^`]+`/g;
+		let match;
+		while ((match = codeRegex.exec(line)) !== null) {
+			ranges.push({ start: match.index, end: match.index + match[0].length });
+		}
+	}
+	
+	// Protect inline LaTeX ($...$)
+	const latexRegex = /(?<!\\)\$(?:\\.|[^$\\])*\$/g;
+	let match;
+	while ((match = latexRegex.exec(line)) !== null) {
+		ranges.push({ start: match.index, end: match.index + match[0].length });
+	}
+	
+	// Protect list markers at the start of the line
+	const listMatch = /^(?:\s*)([*])(?=\s)/.exec(line);
+	if (listMatch) {
+		ranges.push({ start: 0, end: listMatch[0].length });
+	}
+	
+	return ranges;
+}
+
+function isInProtectedRange(index: number, ranges: ProtectedRange[]): boolean {
+	return ranges.some(range => index >= range.start && index < range.end);
 }
 
 /**
