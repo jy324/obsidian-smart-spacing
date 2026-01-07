@@ -1,6 +1,6 @@
 {
   "name": "obsidian-smart-spacing",
-  "version": "1.0.5",
+  "version": "1.1.0",
   "description": "Smart spacing for Obsidian",
   "main": "main.js",
   "scripts": {
