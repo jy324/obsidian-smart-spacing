@@ -12,6 +12,7 @@ export interface SmartSpacingSettings {
 	spaceBetweenChineseAndItalic: boolean;
 	skipCodeBlocks: boolean;
 	skipInlineCode: boolean;
+	useZeroWidthSpace: boolean;
 }
 
 /**
@@ -245,6 +246,7 @@ function fixBoldSpacing(line: string, settings: SmartSpacingSettings): string {
 	let i = 0;
 	let isBold = false;
 	const len = line.length;
+	const spaceChar = getSpaceChar(settings);
 
 	while (i < len) {
 		// Check for *** (treated as bold for spacing purposes initially, or logic split?)
@@ -272,7 +274,7 @@ function fixBoldSpacing(line: string, settings: SmartSpacingSettings): string {
 		if (!isBold) {
 			// Opening
 			if (shouldAddSpaceBefore(result[result.length - 1], settings)) {
-				result += ' ';
+				result += spaceChar;
 			}
 			result += token;
 			isBold = true;
@@ -283,7 +285,7 @@ function fixBoldSpacing(line: string, settings: SmartSpacingSettings): string {
 			isBold = false;
 			i += count;
 			if (shouldAddSpaceAfter(line[i], settings)) {
-				result += ' ';
+				result += spaceChar;
 			}
 		}
 	}
@@ -304,6 +306,7 @@ function fixItalicSpacing(line: string, settings: SmartSpacingSettings): string 
 	let i = 0;
 	let isItalic = false;
 	const len = line.length;
+	const spaceChar = getSpaceChar(settings);
 
 	while (i < len) {
 		// Pass through bold markers (*** or **) without processing them as italic *
@@ -324,8 +327,8 @@ function fixItalicSpacing(line: string, settings: SmartSpacingSettings): string 
 				// Opening
 				// Check char before
 				const charBefore = result[result.length - 1];
-				if (settings.spaceBetweenChineseAndItalic && isChinese(charBefore) && charBefore !== ' ') {
-					result += ' ';
+				if (settings.spaceBetweenChineseAndItalic && isChinese(charBefore) && charBefore !== ' ' && charBefore !== '\u200B') {
+					result += spaceChar;
 				}
 				result += '*';
 				isItalic = true;
@@ -338,7 +341,7 @@ function fixItalicSpacing(line: string, settings: SmartSpacingSettings): string 
 				// Check char after
 				const charAfter = line[i];
 				if (settings.spaceBetweenChineseAndItalic && isChinese(charAfter)) {
-					result += ' ';
+					result += spaceChar;
 				}
 			}
 		} else {
@@ -362,6 +365,14 @@ function fixItalicSpacing(line: string, settings: SmartSpacingSettings): string 
 // Helpers
 // ============================================================================
 
+/**
+ * Get the space character based on settings
+ * Returns zero-width space (\u200B) or regular space
+ */
+function getSpaceChar(settings: SmartSpacingSettings): string {
+	return settings.useZeroWidthSpace ? '\u200B' : ' ';
+}
+
 function isChinese(char: string): boolean {
 	return /[\u4e00-\u9fa5]/.test(char);
 }
@@ -371,14 +382,14 @@ function isAlphaNumeric(char: string): boolean {
 }
 
 function shouldAddSpaceBefore(char: string, settings: SmartSpacingSettings): boolean {
-	if (!char || char === ' ' || char === '\t') return false;
+	if (!char || char === ' ' || char === '\t' || char === '\u200B') return false;
 	if (isChinese(char)) return settings.spaceBetweenChineseAndBold;
 	if (isAlphaNumeric(char)) return settings.spaceBetweenEnglishAndBold;
 	return false;
 }
 
 function shouldAddSpaceAfter(char: string, settings: SmartSpacingSettings): boolean {
-	if (!char || char === ' ' || char === '\t' || char === '\n') return false;
+	if (!char || char === ' ' || char === '\t' || char === '\n' || char === '\u200B') return false;
 	if (isChinese(char)) return settings.spaceBetweenChineseAndBold;
 	if (isAlphaNumeric(char)) return settings.spaceBetweenEnglishAndBold;
 	return false;

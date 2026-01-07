@@ -12,6 +12,7 @@ const DEFAULT_SETTINGS: SmartSpacingSettings = {
 	spaceBetweenChineseAndItalic: true,
 	skipCodeBlocks: true,
 	skipInlineCode: true,
+	useZeroWidthSpace: false,
 };
 
 // ============================================================================
@@ -154,6 +155,16 @@ class SmartSpacingSettingTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.spaceBetweenChineseAndItalic)
 				.onChange(async (value) => {
 					this.plugin.settings.spaceBetweenChineseAndItalic = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('使用零宽空格')
+			.setDesc('使用零宽空格 (\\u200B) 代替普通空格，视觉上无间隙但仍能正确渲染')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.useZeroWidthSpace)
+				.onChange(async (value) => {
+					this.plugin.settings.useZeroWidthSpace = value;
 					await this.plugin.saveSettings();
 				}));
 
