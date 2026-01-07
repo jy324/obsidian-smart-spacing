@@ -44,7 +44,7 @@ console.log(`📦 Creating GitHub release v${version}...`);
 
 try {
     // Create the release with files
-    const cmd = `gh release create ${tagName} ${filesArg} --title "v${version}" --generate-notes`;
+    const cmd = `gh release create ${tagName} ${filesArg} --title "${version}" --generate-notes`;
     console.log(`   Running: ${cmd}`);
     execSync(cmd, { stdio: "inherit" });
     console.log(`✅ Release v${version} created successfully!`);
