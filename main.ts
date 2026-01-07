@@ -1,5 +1,6 @@
 import { App, Editor, MarkdownView, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
 import { processText, SmartSpacingSettings } from './processor';
+import { livePreviewExtension } from './livePreviewExtension';
 
 // ============================================================================
 // Constants & Defaults
@@ -7,11 +8,12 @@ import { processText, SmartSpacingSettings } from './processor';
 
 const DEFAULT_SETTINGS: SmartSpacingSettings = {
 	removeInternalBoldSpaces: true,
-	spaceBetweenChineseAndBold: true,
+	spaceBetweenChineseAndBold: false, // 不再需要添加空格
 	spaceBetweenEnglishAndBold: false,
-	spaceBetweenChineseAndItalic: true,
+	spaceBetweenChineseAndItalic: false, // 不再需要添加空格
 	skipCodeBlocks: true,
 	skipInlineCode: true,
+	enableLivePreview: true, // 新增：启用 Live Preview 修复
 };
 
 // ============================================================================
@@ -22,6 +24,11 @@ export default class SmartSpacingPlugin extends Plugin {
 
 	async onload() {
 		await this.loadSettings();
+
+		// Register CodeMirror 6 extension for Live Preview fix
+		if (this.settings.enableLivePreview) {
+			this.registerEditorExtension(livePreviewExtension);
+		}
 
 		// Command: Fix all spacing (designed for Linter custom command)
 		this.addCommand({
@@ -109,13 +116,23 @@ class SmartSpacingSettingTab extends PluginSettingTab {
 			.setHeading();
 
 		containerEl.createEl('p', {
-			text: '💡 此插件专注于处理加粗/斜体的空格问题，建议配合 linter 插件使用。',
+			text: '💡 此插件通过 CodeMirror 扩展在 Live Preview 模式下正确渲染中文旁的加粗/斜体。',
 			cls: 'setting-item-description'
 		});
 
 		new Setting(containerEl)
 			.setName('核心功能')
 			.setHeading();
+
+		new Setting(containerEl)
+			.setName('🔧 启用 Live Preview 修复')
+			.setDesc('通过 CodeMirror 扩展修复中文旁加粗/斜体无法渲染的问题（需重启 Obsidian）')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.enableLivePreview)
+				.onChange(async (value) => {
+					this.plugin.settings.enableLivePreview = value;
+					await this.plugin.saveSettings();
+				}));
 
 		new Setting(containerEl)
 			.setName('🧹 清理加粗/斜体内部空格')
@@ -129,7 +146,7 @@ class SmartSpacingSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('中文与加粗之间添加空格')
-			.setDesc('中文**加粗** → 中文 **加粗**')
+			.setDesc('中文**加粗** → 中文 **加粗**（如启用 Live Preview 修复则不需要）')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.spaceBetweenChineseAndBold)
 				.onChange(async (value) => {
@@ -149,7 +166,7 @@ class SmartSpacingSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('中文与斜体之间添加空格')
-			.setDesc('中文*斜体* → 中文 *斜体*')
+			.setDesc('中文*斜体* → 中文 *斜体*（如启用 Live Preview 修复则不需要）')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.spaceBetweenChineseAndItalic)
 				.onChange(async (value) => {

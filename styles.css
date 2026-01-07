@@ -1,0 +1,13 @@
+/* Force style for our smart spacing elements */
+.cm-smart-spacing-bold {
+    font-weight: bold !important;
+}
+
+.cm-smart-spacing-italic {
+    font-style: italic !important;
+}
+
+.cm-smart-spacing-bold-italic {
+    font-weight: bold !important;
+    font-style: italic !important;
+}

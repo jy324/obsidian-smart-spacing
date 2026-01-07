@@ -1,4 +1,5 @@
-import { processText, SmartSpacingSettings } from './processor';
+import { processText } from './processor.ts';
+import type { SmartSpacingSettings } from './processor.ts';
 import * as fs from 'fs';
 
 /**
@@ -12,11 +13,12 @@ import * as fs from 'fs';
 
 const defaultSettings: SmartSpacingSettings = {
     removeInternalBoldSpaces: true,
-    spaceBetweenChineseAndBold: true,
+    spaceBetweenChineseAndBold: false,
     spaceBetweenEnglishAndBold: false, // Default is false for English
-    spaceBetweenChineseAndItalic: true,
+    spaceBetweenChineseAndItalic: false,
     skipCodeBlocks: true,
     skipInlineCode: true,
+    enableLivePreview: true, // Not relevant for text processing tests
 };
 
 // ============================================================================
@@ -35,19 +37,19 @@ const testCases: TestCase[] = [
     // Basic Spacing
     // ------------------------------------------------------------------------
     {
-        desc: 'Basic Chinese Bold Spacing',
+        desc: 'Basic Chinese Bold Spacing (No Change)',
         input: '中文**加粗**中文',
-        expected: '中文 **加粗** 中文'
+        expected: '中文**加粗**中文'
     },
     {
-        desc: 'Basic Chinese Italic Spacing',
+        desc: 'Basic Chinese Italic Spacing (No Change)',
         input: '中文*斜体*中文',
-        expected: '中文 *斜体* 中文'
+        expected: '中文*斜体*中文'
     },
     {
-        desc: 'Mixed Bold/Italic Spacing',
+        desc: 'Mixed Bold/Italic Spacing (No Change)',
         input: '中文***加粗斜体***中文',
-        expected: '中文 ***加粗斜体*** 中文'
+        expected: '中文***加粗斜体***中文'
     },
 
     // ------------------------------------------------------------------------
@@ -60,8 +62,8 @@ const testCases: TestCase[] = [
     },
     {
         desc: 'Remove internal spaces in italic',
-        input: '*  Content  *',
-        expected: '*Content*'
+        input: '内容*  Content  *内容',
+        expected: '内容*Content*内容'
     },
     {
         desc: 'Remove internal spaces in bold+italic',
@@ -118,9 +120,9 @@ const testCases: TestCase[] = [
         settings: { spaceBetweenEnglishAndBold: true }
     },
     {
-        desc: 'Consecutive marks',
+        desc: 'Consecutive marks (No Change)',
         input: '中文**Bold**中文**Bold**',
-        expected: '中文 **Bold** 中文 **Bold**'
+        expected: '中文**Bold**中文**Bold**'
     },
 
     // ------------------------------------------------------------------------
@@ -132,9 +134,9 @@ const testCases: TestCase[] = [
         expected: 'Use `const x` in **TypeScript** code.' // No extra spaces needed for English default
     },
     {
-        desc: 'Complex line with Chinese and code',
+        desc: 'Complex line with Chinese and code (No Change)',
         input: '使用`code`进行**加粗**',
-        expected: '使用`code`进行 **加粗**' // Space before bold (after Chinese char `行`)
+        expected: '使用`code`进行**加粗**' // Space before bold (after Chinese char `行`)
     },
     {
         desc: 'List item with bold',

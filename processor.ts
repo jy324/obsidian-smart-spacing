@@ -12,6 +12,7 @@ export interface SmartSpacingSettings {
 	spaceBetweenChineseAndItalic: boolean;
 	skipCodeBlocks: boolean;
 	skipInlineCode: boolean;
+	enableLivePreview: boolean;
 }
 
 /**
