@@ -104,7 +104,7 @@ function protectLine(line: string, settings: SmartSpacingSettings): { protectedL
 	// 1. Protect List Markers (e.g. "  * ") - Only the asterisk itself
 	const listMatch = /^(?:\s*)([*])(?=\s)/.exec(protectedLine);
 	if (listMatch) {
-		const placeholder = `\x00LIST${nextIndex}\x00`;
+		const placeholder = `__SSS_LIST_${nextIndex}__`;
 		// listMatch[1] captures the '*', listMatch[0] captures whitespace+*, but we only want to protect the '*' to avoid messing up indentation logic if we ever touch it. 
 		// Actually the original logic replaced listMatch[0]. Let's stick to original behavior to be safe, but review:
 		// original: /^(?:\s*)([*])(?=\s)/ captures the asterisk in group 1. But exec returns match array where [0] is the whole match.
@@ -119,25 +119,8 @@ function protectLine(line: string, settings: SmartSpacingSettings): { protectedL
 
 	// 2. Protect Inline Code (`code`)
 	if (settings.skipInlineCode) {
-		const inlineCodeRegex = /`[^`]+`/g;
-		let match;
-		// Reset regex state if reused (not needed for local var but good practice if moved out)
-		while ((match = inlineCodeRegex.exec(protectedLine)) !== null) {
-			const placeholder = `\x00CODE${nextIndex}\x00`;
-			sections.push({ placeholder, original: match[0] });
-			protectedLine = protectedLine.replace(match[0], placeholder);
-			// Reset index to avoid infinite loop if replacement is shorter/longer (replace only replaces first occurrence, but we are looping on modified string? No, exec loop on modified string is tricky.)
-			// BETTER: Use a replace callback or split/join.
-			// Current safe approach: replace matches one by one. But modifying the string while exec-ing on it is dangerous if indices shift.
-			// Standard approach for robust replacement:
-			// Let's use a specialized tokenization or just replace carefully.
-			// Since we use unique placeholders that won't match the regex, we can continue.
-			// However, simple loop:
-		}
-		// RERUN loop safely:
-		// Actually, `replace` with a callback is much safer and faster.
 		protectedLine = protectedLine.replace(/`[^`]+`/g, (match) => {
-			const placeholder = `\x00CODE${nextIndex++}\x00`;
+			const placeholder = `__SSS_CODE_${nextIndex++}__`;
 			sections.push({ placeholder, original: match });
 			return placeholder;
 		});
@@ -147,7 +130,7 @@ function protectLine(line: string, settings: SmartSpacingSettings): { protectedL
 	const latexRegex = /(?<!\\)\$(?:\\.|[^$\\])*\$/g;
 	protectedLine = protectedLine.replace(latexRegex, (match) => {
 		// Avoid double protection if it somehow overlaps (unlikely with replace)
-		const placeholder = `\x00LATEX${nextIndex++}\x00`;
+		const placeholder = `__SSS_LATEX_${nextIndex++}__`;
 		sections.push({ placeholder, original: match });
 		return placeholder;
 	});

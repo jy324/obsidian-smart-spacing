@@ -62,7 +62,7 @@ function protectLine(line, settings) {
 
 	const listMatch = /^(?:\s*)([*])(?=\s)/.exec(protectedLine);
 	if (listMatch) {
-		const placeholder = `\x00LIST${nextIndex}\x00`;
+		const placeholder = `__SSS_LIST_${nextIndex}__`;
 		sections.push({ placeholder, original: listMatch[0] });
 		protectedLine = protectedLine.replace(listMatch[0], placeholder);
 		nextIndex++;
@@ -70,7 +70,7 @@ function protectLine(line, settings) {
 
 	if (settings.skipInlineCode) {
 		protectedLine = protectedLine.replace(/`[^`]+`/g, (match) => {
-			const placeholder = `\x00CODE${nextIndex++}\x00`;
+			const placeholder = `__SSS_CODE_${nextIndex++}__`;
 			sections.push({ placeholder, original: match });
 			return placeholder;
 		});
@@ -78,7 +78,7 @@ function protectLine(line, settings) {
 
 	const latexRegex = /(?<!\\)\$(?:\\.|[^$\\])*\$/g;
 	protectedLine = protectedLine.replace(latexRegex, (match) => {
-		const placeholder = `\x00LATEX${nextIndex++}\x00`;
+		const placeholder = `__SSS_LATEX_${nextIndex++}__`;
 		sections.push({ placeholder, original: match });
 		return placeholder;
 	});
