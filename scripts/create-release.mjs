@@ -10,12 +10,19 @@
  */
 
 import { execSync } from "child_process";
-import { readFileSync, existsSync } from "fs";
+import { readFileSync, existsSync, copyFileSync } from "fs";
 
 // Get version from package.json
 const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
 const version = packageJson.version;
 const tagName = `${version}`;
+
+// Ensure build/manifest.json is up-to-date with the new version
+// (Because "npm run build" usually runs before version bump, so build/manifest.json might be stale)
+if (existsSync("manifest.json")) {
+    console.log(`🔄 Syncing build/manifest.json with version ${version}...`);
+    copyFileSync("manifest.json", "build/manifest.json");
+}
 
 // Check if build folder exists
 if (!existsSync("build/main.js") || !existsSync("build/manifest.json")) {

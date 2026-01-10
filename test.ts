@@ -17,6 +17,7 @@ const defaultSettings: SmartSpacingSettings = {
     spaceBetweenChineseAndItalic: true,
     skipCodeBlocks: true,
     skipInlineCode: true,
+    useZeroWidthSpace: false,
 };
 
 // ============================================================================
@@ -145,6 +146,30 @@ const testCases: TestCase[] = [
         desc: 'List item with internal spaces to clean',
         input: '* **  Bold Item  **',
         expected: '* **Bold Item**'
+    },
+    // ------------------------------------------------------------------------
+    // Bug Fixes
+    // ------------------------------------------------------------------------
+    {
+        desc: 'Virial Theorem Bug - Inline Latex plus Block Latex',
+        input: `## 维里定理
+
+**维里定理（Virial Theorem）**是经典力学和天体物理学中一个极其优雅且强大的定理。它建立了这一类系统的**动能**（$K$）与**势能**（$U$）之间的宏观联系。
+
+对于一个由万有引力束缚的稳定系统（如恒星、星系、星系团），维里定理最简单的形式是：
+
+$$ 2K + U = 0 $$
+
+这意味着：**系统的总引力势能的绝对值，是其总动能的两倍。** 或者说，动能等于负的势能的一半。`,
+        expected: `## 维里定理
+
+**维里定理（Virial Theorem）** 是经典力学和天体物理学中一个极其优雅且强大的定理。它建立了这一类系统的 **动能**（$K$）与 **势能**（$U$）之间的宏观联系。
+
+对于一个由万有引力束缚的稳定系统（如恒星、星系、星系团），维里定理最简单的形式是：
+
+$$ 2K + U = 0 $$
+
+这意味着：**系统的总引力势能的绝对值，是其总动能的两倍。** 或者说，动能等于负的势能的一半。`
     }
 ];
 

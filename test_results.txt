@@ -1,0 +1,29 @@
+============================================================
+Running Smart Spacing Logic Tests
+============================================================
+✅ PASS: Basic Chinese Bold Spacing
+✅ PASS: Basic Chinese Italic Spacing
+✅ PASS: Mixed Bold/Italic Spacing
+✅ PASS: Remove internal spaces in bold
+❌ FAIL: Remove internal spaces in italic
+   Input:    "*  Content  *"
+   Expected: "*Content*"
+   Got:      "*  Content  *"
+✅ PASS: Remove internal spaces in bold+italic
+✅ PASS: Do not remove single space if it connects words (English)
+✅ PASS: Protect Inline Code
+✅ PASS: Protect LaTeX
+✅ PASS: Protect List Markers (Star)
+✅ PASS: Protect List Markers with indentation
+✅ PASS: Punctuation interaction
+✅ PASS: English interaction (Default: No space)
+✅ PASS: English interaction (Enabled)
+✅ PASS: Consecutive marks
+✅ PASS: Complex line with code and bold
+✅ PASS: Complex line with Chinese and code
+✅ PASS: List item with bold
+✅ PASS: List item with internal spaces to clean
+✅ PASS: Virial Theorem Bug - Inline Latex plus Block Latex
+============================================================
+Results: 19 passed, 1 failed
+============================================================
