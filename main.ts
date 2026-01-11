@@ -62,7 +62,7 @@ export default class SmartSpacingPlugin extends Plugin {
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, (await this.loadData()) as unknown);
 	}
 
 	async saveSettings() {
@@ -85,7 +85,7 @@ export default class SmartSpacingPlugin extends Plugin {
 				new Notice('Smart spacing fixed');
 			}
 		} else if (showNotice) {
-			new Notice('No changes needed.');
+			new Notice('Smart spacing: no changes needed.');
 		}
 	}
 }
@@ -160,6 +160,7 @@ class SmartSpacingSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('使用零宽空格')
+			// eslint-disable-next-line obsidianmd/ui/sentence-case
 			.setDesc('使用零宽空格 (\\u200B) 代替普通空格，视觉上无间隙但仍能正确渲染')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.useZeroWidthSpace)
