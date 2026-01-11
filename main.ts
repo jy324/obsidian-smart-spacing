@@ -158,10 +158,10 @@ class SmartSpacingSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 
+		const zeroWidthSpaceDesc = '使用零宽空格 (\\u200B) 代替普通空格，视觉上无间隙但仍能正确渲染';
 		new Setting(containerEl)
 			.setName('使用零宽空格')
-			// eslint-disable-next-line obsidianmd/ui/sentence-case
-			.setDesc('使用零宽空格 (\\u200B) 代替普通空格，视觉上无间隙但仍能正确渲染')
+			.setDesc(zeroWidthSpaceDesc)
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.useZeroWidthSpace)
 				.onChange(async (value) => {
