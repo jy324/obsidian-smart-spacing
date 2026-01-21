@@ -12,6 +12,9 @@ export default tseslint.config(
   // @ts-expect-error: obsidianmd types are slightly incompatible with new eslint types
   ...obsidianmd.configs.recommended,
   {
+    plugins: {
+      "obsidianmd": obsidianmd,
+    },
     languageOptions: {
       globals: {
         ...globals.browser,
@@ -26,7 +29,8 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
       "@typescript-eslint/no-explicit-any": "warn",
       "no-console": ["error", { allow: ["warn", "error", "debug"] }],
-      "no-restricted-imports": ["error", "fs"],
+      "no-restricted-imports": ["error", "fs", "node:fs", "fs/promises", "node:fs/promises"],
+      "obsidianmd/ui/sentence-case": "error", // Upgrade warning to error to match bot
     },
   }
 );

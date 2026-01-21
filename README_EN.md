@@ -2,6 +2,15 @@
 
 An Obsidian plugin focused on handling **bold/italic** spacing issues, designed as a **complement to the Linter plugin**.
 
+## ⚠️ Important Warning
+
+**This plugin is currently in early development and may not be fully functional. There is a risk of data loss or file corruption. Please back up your notes before using this plugin!**
+
+Recommended backup methods:
+- Use Obsidian backup plugins
+- Manually copy your entire Vault folder
+- Use Git for version control
+
 ## Why This Plugin?
 
 The Linter plugin uses regular expressions to handle spacing, but regex cannot correctly distinguish whether `**` is an opening or closing marker, which leads to:
