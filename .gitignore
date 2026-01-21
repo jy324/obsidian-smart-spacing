@@ -1,5 +1,25 @@
+# Dependencies
 node_modules
-main.js
-manifest.json.old
 
+# Build output
+main.js
 build
+
+# Development and testing files
+test.ts
+test_results.txt
+verify_logic.js
+data.json
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Old files
+manifest.json.old
+*.old
+*.bak
