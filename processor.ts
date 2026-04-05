@@ -13,6 +13,7 @@ export interface SmartSpacingSettings {
 	skipCodeBlocks: boolean;
 	skipInlineCode: boolean;
 	useZeroWidthSpace: boolean;
+	removeFirstLineIndent: boolean;
 }
 
 /**
@@ -31,36 +32,73 @@ export function processText(text: string, settings: SmartSpacingSettings): strin
 	const resultLines: string[] = [];
 	let inCodeBlock = false;
 	let inLatexBlock = false;
+	let inFrontmatter = false;
+	let lineIndex = 0;
 
 	for (const line of lines) {
 		const trim = line.trim();
 
-		// Handle Code Blocks (``` or ~~~)
-		if (settings.skipCodeBlocks && /^```|^~~~/.test(trim)) {
+		// YAML frontmatter detection (must start at line 0)
+		if (lineIndex === 0 && trim === '---') {
+			inFrontmatter = true;
+			resultLines.push(line);
+			lineIndex++;
+			continue;
+		}
+		if (inFrontmatter) {
+			resultLines.push(line);
+			if (trim === '---') {
+				inFrontmatter = false;
+			}
+			lineIndex++;
+			continue;
+		}
+
+		// Always track code block boundaries for correct state (Issue #2)
+		const isCodeFence = /^```|^~~~/.test(trim);
+		if (isCodeFence) {
 			inCodeBlock = !inCodeBlock;
 			resultLines.push(line);
+			lineIndex++;
 			continue;
 		}
 
 		// Handle LaTeX Blocks ($$)
-		if (/^\s*\$\$/.test(trim)) {
-			// Check for single line $$ ... $$ (e.g. $$ E=mc^2 $$)
-			// If not single line, toggle block state
-			if (!/^\s*\$\$.*\$\$\s*$/.test(trim) || trim === '$$') {
+		if (/^\$\$/.test(trim)) {
+			// Single line $$ ... $$ (e.g. $$ E=mc^2 $$) vs block delimiter
+			if (!/^\$\$.*\$\$$/.test(trim) || trim === '$$') {
 				inLatexBlock = !inLatexBlock;
 			}
 			resultLines.push(line);
+			lineIndex++;
 			continue;
 		}
 
-		// If inside a block, preserve line as is
-		if (inCodeBlock || inLatexBlock) {
+		// If inside a protected block, preserve line as is
+		if ((inCodeBlock && settings.skipCodeBlocks) || inLatexBlock) {
 			resultLines.push(line);
+			lineIndex++;
 			continue;
 		}
 
-		// Process the line
-		resultLines.push(processLine(line, settings));
+		// If inside a code block but skipCodeBlocks is off, still skip processing
+		// to avoid corrupting code content
+		if (inCodeBlock) {
+			resultLines.push(line);
+			lineIndex++;
+			continue;
+		}
+
+		let processedLine = line;
+
+		// Remove first-line indent (before other processing)
+		if (settings.removeFirstLineIndent) {
+			processedLine = removeLineIndent(processedLine);
+		}
+
+		// Process the line (bold/italic spacing)
+		resultLines.push(processLine(processedLine, settings));
+		lineIndex++;
 	}
 
 	return resultLines.join('\n');
@@ -117,9 +155,10 @@ function protectLine(line: string, settings: SmartSpacingSettings): { protectedL
 		nextIndex++;
 	}
 
-	// 2. Protect Inline Code (`code`)
+	// 2. Protect Inline Code — supports multi-backtick delimiters per CommonMark spec
+	// e.g. `code`, ``code with `backtick` inside``, etc.
 	if (settings.skipInlineCode) {
-		protectedLine = protectedLine.replace(/`[^`]+`/g, (match) => {
+		protectedLine = protectedLine.replace(/(``+)(?!`)([\s\S]*?)\1(?!`)/g, (match) => {
 			const placeholder = `__SSS_CODE_${nextIndex++}__`;
 			sections.push({ placeholder, original: match });
 			return placeholder;
@@ -345,6 +384,96 @@ function fixItalicSpacing(line: string, settings: SmartSpacingSettings): string 
 
 
 // ============================================================================
+// Remove First-Line Indent
+// ============================================================================
+
+/**
+ * Remove leading indent from a line if it contains full-width spaces or starts with CJK.
+ * Preserves structural Markdown elements (lists, blockquotes, headings, tables, etc.)
+ */
+function removeLineIndent(line: string): string {
+	const trimmed = line.trimStart();
+	const indent = line.slice(0, line.length - trimmed.length);
+
+	// Preserve structural Markdown elements
+	if (/^[*\-+]\s|^\d+\.\s|^>\s|^#+\s|^\||\-{3,}|^\*{3,}|^<|^:\s/.test(trimmed)) {
+		return line;
+	}
+
+	// Only strip if indent contains full-width space (\u3000) OR trimmed line starts with CJK
+	const hasFullWidthSpace = /\u3000/.test(indent);
+	const startsWithCJK = trimmed.length > 0 && isChinese(trimmed[0]);
+
+	if (hasFullWidthSpace || startsWithCJK) {
+		return trimmed;
+	}
+
+	return line;
+}
+
+/**
+ * Pre-scan a line to find valid (properly paired) marker positions.
+ * Returns a Set of character indices that are part of valid opening/closing marker pairs.
+ */
+function findValidMarkerPairs(line: string): Set<number> {
+	const validPositions = new Set<number>();
+	const stack: { type: string; pos: number }[] = [];
+	let i = 0;
+
+	while (i < line.length) {
+		if (isMarker(line, i, 3)) {
+			const top = stack[stack.length - 1];
+			if (top && top.type === '***') {
+				validPositions.add(top.pos);
+				validPositions.add(i);
+				stack.pop();
+			} else {
+				stack.push({ type: '***', pos: i });
+			}
+			i += 3;
+		} else if (isMarker(line, i, 2)) {
+			const top = stack[stack.length - 1];
+			if (top && top.type === '**') {
+				validPositions.add(top.pos);
+				validPositions.add(i);
+				stack.pop();
+			} else {
+				stack.push({ type: '**', pos: i });
+			}
+			i += 2;
+		} else if (isMarker(line, i, 1)) {
+			const top = stack[stack.length - 1];
+			if (top && top.type === '*') {
+				validPositions.add(top.pos);
+				validPositions.add(i);
+				stack.pop();
+			} else {
+				stack.push({ type: '*', pos: i });
+			}
+			i += 1;
+		} else {
+			i++;
+		}
+	}
+
+	return validPositions;
+}
+
+/**
+ * Module-level isMarker helper (extracted from nested definitions)
+ */
+function isMarker(text: string, index: number, count: number): boolean {
+	if (index + count > text.length) return false;
+	for (let j = 0; j < count; j++) {
+		if (text[index + j] !== '*') return false;
+	}
+	// Ensure not part of a longer run of stars
+	if (index + count < text.length && text[index + count] === '*') return false;
+	return true;
+}
+
+
+// ============================================================================
 // Helpers
 // ============================================================================
 
@@ -357,7 +486,8 @@ function getSpaceChar(settings: SmartSpacingSettings): string {
 }
 
 function isChinese(char: string): boolean {
-	return /[\u4e00-\u9fa5]/.test(char);
+	// Uses Unicode property escape to cover all CJK Unified Ideographs (Extensions A-G)
+	return /\p{Unified_Ideograph}/u.test(char);
 }
 
 function isAlphaNumeric(char: string): boolean {

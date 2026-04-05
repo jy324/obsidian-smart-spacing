@@ -13,6 +13,7 @@ const DEFAULT_SETTINGS: SmartSpacingSettings = {
 	skipCodeBlocks: true,
 	skipInlineCode: true,
 	useZeroWidthSpace: false,
+	removeFirstLineIndent: false,
 };
 
 // ============================================================================
@@ -33,10 +34,10 @@ export default class SmartSpacingPlugin extends Plugin {
 			}
 		});
 
-		// Command: Fix bold spacing (Legacy command, performs full fix)
+		// Command: Fix all spacing (legacy alias, kept for backward compatibility)
 		this.addCommand({
 			id: 'fix-bold-spacing',
-			name: 'Fix bold spacing only',
+			name: 'Fix all spacing (legacy)',
 			editorCallback: (editor: Editor, _view: MarkdownView) => {
 				this.formatEditor(editor, true);
 			}
@@ -62,7 +63,8 @@ export default class SmartSpacingPlugin extends Plugin {
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, (await this.loadData()) as unknown);
+		const loaded = (await this.loadData()) as Partial<SmartSpacingSettings> | null;
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, loaded ?? {});
 	}
 
 	async saveSettings() {
@@ -74,13 +76,18 @@ export default class SmartSpacingPlugin extends Plugin {
 	 */
 	formatEditor(editor: Editor, showNotice: boolean): void {
 		const content = editor.getValue();
-		// Use the extracted processor
 		const newContent = processText(content, this.settings);
 
 		if (content !== newContent) {
 			const cursor = editor.getCursor();
+			const newLines = newContent.split('\n');
+
+			// Clamp cursor position to valid range after text changes
+			const line = Math.min(cursor.line, newLines.length - 1);
+			const ch = Math.min(cursor.ch, (newLines[line] ?? '').length);
+
 			editor.setValue(newContent);
-			editor.setCursor(cursor);
+			editor.setCursor({ line, ch });
 			if (showNotice) {
 				new Notice('Smart spacing fixed');
 			}
@@ -158,6 +165,16 @@ class SmartSpacingSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 
+		new Setting(containerEl)
+			.setName('🧹 移除段落首行缩进')
+			.setDesc('移除中文段落的首行缩进（全角空格、半角空格等），不影响列表、引用等结构')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.removeFirstLineIndent)
+				.onChange(async (value) => {
+					this.plugin.settings.removeFirstLineIndent = value;
+					await this.plugin.saveSettings();
+				}));
+
 		const zeroWidthSpaceDesc = '使用零宽空格 (\\u200B) 代替普通空格，视觉上无间隙但仍能正确渲染';
 		new Setting(containerEl)
 			.setName('使用零宽空格')
@@ -175,7 +192,7 @@ class SmartSpacingSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('跳过代码块')
-			.setDesc('不修改 ``` 代码块内的内容')
+			.setDesc('不修改 ``` 代码块内的内容（强烈建议保持开启）')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.skipCodeBlocks)
 				.onChange(async (value) => {
