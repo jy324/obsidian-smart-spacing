@@ -188,58 +188,46 @@ function restoreProtectedSections(line: string, sections: ProtectedSection[]): s
 }
 
 /**
- * State machine to clean bold/italic internal spaces
+ * State machine to clean bold/italic internal spaces — only for validated marker pairs.
  * **  text  ** -> **text**
  */
 function removeInternalSpaces(line: string): string {
+	const validPairs = findValidMarkerPairs(line);
 	let result = '';
 	let i = 0;
 	const len = line.length;
-	// Stack for markers: type ('*', '**', '***') and startPos in 'result'
 	const markerStack: { type: string; startPos: number }[] = [];
 
 	while (i < len) {
-		// Three stars ***
 		if (isMarker(line, i, 3)) {
 			handleMarker(3, '***');
-		}
-		// Two stars **
-		else if (isMarker(line, i, 2)) {
+		} else if (isMarker(line, i, 2)) {
 			handleMarker(2, '**');
-		}
-		// One star *
-		else if (isMarker(line, i, 1)) {
+		} else if (isMarker(line, i, 1)) {
 			handleMarker(1, '*');
-		}
-		else {
+		} else {
 			result += line[i];
 			i++;
 		}
 	}
 
-	function isMarker(text: string, index: number, count: number): boolean {
-		if (index + count > text.length) return false;
-		for (let j = 0; j < count; j++) {
-			if (text[index + j] !== '*') return false;
-		}
-		// Ensure it's exactly 'count' stars (not part of a larger set if we already checked larger sets)
-		// processed in order (3, 2, 1) so if we matched 3, we consumed it.
-		// But if we are checking 2, and it is 3, we should have already caught it?
-		// Yes, the main loop order matters.
-		// However, we need to make sure we don't match '**' inside '***' if we didn't check '***' first? 
-		// We do check '***' first.
-		// Check that the character AFTER is not a star?
-		if (index + count < text.length && text[index + count] === '*') return false;
-		return true;
-	}
-
 	function handleMarker(count: number, type: string) {
+		if (!validPairs.has(i)) {
+			// Not part of a valid pair — output as-is
+			result += type;
+			i += count;
+			return;
+		}
+
 		const lastMarker = markerStack[markerStack.length - 1];
 		if (lastMarker && lastMarker.type === type) {
-			// Closing marker
-			// Trim trailing spaces in 'result' before appending closing marker
-			while (result.length > lastMarker.startPos && /\s/.test(result[result.length - 1])) {
-				result = result.slice(0, -1);
+			// Closing marker — trim trailing spaces before appending (O(n) single slice)
+			let trimEnd = result.length;
+			while (trimEnd > lastMarker.startPos && /\s/.test(result[trimEnd - 1])) {
+				trimEnd--;
+			}
+			if (trimEnd < result.length) {
+				result = result.slice(0, trimEnd);
 			}
 			result += type;
 			markerStack.pop();
@@ -247,10 +235,10 @@ function removeInternalSpaces(line: string): string {
 		} else {
 			// Opening marker
 			result += type;
-			markerStack.push({ type, startPos: result.length }); // startPos is right after marker
+			markerStack.push({ type, startPos: result.length });
 			i += count;
 			// Skip spaces after opening marker
-			while (i < len && /[ \t]/.test(line[i])) { // Only skip spaces/tabs, not newlines (though line shouldn't have newlines)
+			while (i < len && /[ \t]/.test(line[i])) {
 				i++;
 			}
 		}
@@ -396,7 +384,7 @@ function removeLineIndent(line: string): string {
 	const indent = line.slice(0, line.length - trimmed.length);
 
 	// Preserve structural Markdown elements
-	if (/^[*\-+]\s|^\d+\.\s|^>\s|^#+\s|^\||\-{3,}|^\*{3,}|^<|^:\s/.test(trimmed)) {
+	if (/^[*+-]\s|^\d+\.\s|^>\s|^#+\s|^\||-{3,}|^\*{3,}|^<|^:\s/.test(trimmed)) {
 		return line;
 	}
 
